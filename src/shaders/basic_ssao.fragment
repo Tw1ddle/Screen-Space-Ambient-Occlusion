@@ -1,0 +1,124 @@
+// Screen-space ambient occlusion shader
+// Adapted from the three.js example: http://threejs.org/examples/#webgl_postprocessing_ssao
+// Originally ported to three.js by alteredq: http://alteredqualia.com/
+// Based on SSAO GLSL shader v1.2 assembled by Martins Upitis (martinsh): http://devlog-martinsh.blogspot.co.uk/search/label/SSAO
+// Original technique by Arkano22: www.gamedev.net/topic/550699-ssao-no-halo-artifacts/
+
+#define E 2.71828182845904523536 // Eulers number
+#define GOLDEN_ANGLE 2.39996322972865332 // PI * (3.0 - sqrt(5.0)) radians. See: https://en.wikipedia.org/wiki/Golden_angle
+const int samples = 16; // AO estimator samples
+
+varying vec2 vUv; // UV coordinate of the pixel being processed in [0-1, 0-1]
+
+uniform sampler2D tDepth; // Depth buffer packed into texture in previous pass
+uniform vec2 size; // Render target width and height
+uniform float near; // Z-near
+uniform float far; // Z-far
+uniform float minDepth; // Depth clamp, reduces haloing at screen edges
+uniform float radius; // AO radius
+uniform float noiseAmount; // Noise amount
+uniform float diffArea; // Self-shadowing reduction
+uniform float gDisplace; // Gauss bell center
+uniform float gArea; // Gauss bell width
+
+// Unpack depth value packed in RGBA value
+float unpackDepth(const in vec4 rgba)
+{
+	const vec4 bitShift = vec4(1.0 / (256.0 * 256.0 * 256.0), 1.0 / (256.0 * 256.0), 1.0 / 256.0, 1.0);
+	return dot(rgba, bitShift);
+}
+
+// Read from packed depth texture
+float readDepth(const in vec2 coord)
+{
+	float depth = unpackDepth(texture2D(tDepth, coord));
+	
+	// Convert depth value to linear space
+	return (2.0 * near) / ((near + far) - (depth * (far - near)));
+}
+
+float compareDepths(const in float depth1, const in float depth2, inout int far)
+{
+	float diff = clamp((depth1 - depth2) * 100.0, 0.0, 100.0); // Depth difference
+	float area = gArea;
+
+	// Reduce left bell width to avoid self-shadowing
+	if (diff < gDisplace)
+	{
+		area = diffArea;
+	}
+	else
+	{
+		far = 1;
+	}
+
+	float dd = diff - gDisplace;
+	float gauss = pow(E, -2.0 * dd * dd / (area * area));
+	return gauss;
+}
+
+float estimateAO(float depth, float dw, float dh)
+{
+	float dd = radius - depth * radius;
+	vec2 vv = vec2(dw, dh);
+	
+	vec2 coord1 = vUv + dd * vv;
+	int far = 0;
+	float temp1 = compareDepths(depth, readDepth(coord1), far);
+	
+	// Linear extrapolation to guess a second layer of depth at a discontinuity
+	if (far > 0)
+	{
+		vec2 coord2 = vUv - dd * vv;
+		float temp2 = compareDepths(depth, readDepth(coord2), far);
+		temp1 += (1.0 - temp1) * temp2;
+	}
+
+	return temp1;
+}
+
+// Noise generation for dithering
+vec2 rand(const in vec2 coord)
+{
+	float noiseX = dot(coord, vec2(12.9898, 78.233));
+	float noiseY = dot(coord, vec2(12.9898, 78.233) * 2.0);
+	vec2 noise = clamp(fract(sin(vec2(noiseX, noiseY)) * 43758.5453), 0.0, 1.0);
+	return (noise * 2.0 - 1.0) * noiseAmount;
+}
+
+void main()
+{
+	float depth = readDepth(vUv);
+	
+	if(depth >= 1.00) 
+	{
+		gl_FragColor = vec4(1.0);
+		return;
+	}
+	
+	float tt = clamp(depth, minDepth, 1.0);
+	
+	vec2 noise = rand(vUv);
+	float w = (1.0 / size.x)  / tt + (noise.x * (1.0 - noise.x));
+	float h = (1.0 / size.y) / tt + (noise.y * (1.0 - noise.y));
+	
+	// Gets the average estimated AO from evenly distributed sample points on a sphere using golden section spiral method
+	float ao = 0.0;
+	float dz = 1.0 / float(samples);
+	float z = 1.0 - dz / 2.0;
+	float l = 0.0;
+	for (int i = 0; i <= samples; i++)
+	{
+		float r = sqrt(1.0 - z);
+		float pw = cos(l) * r;
+		float ph = sin(l) * r;
+		ao += estimateAO(depth, pw * w, ph * h);
+		z = z - dz;
+		l = l + GOLDEN_ANGLE;
+	}
+	ao /= float(samples);
+	
+	ao = 1.0 - ao;
+	
+	gl_FragColor = vec4(vec3(ao), 1.0);
+}
