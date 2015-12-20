@@ -89,36 +89,32 @@ vec2 rand(const in vec2 coord)
 void main()
 {
 	float depth = readDepth(vUv);
+	float ao = 1.0;
 	
-	if(depth >= 1.00) 
+	if(depth < 1.00) // Avoid doing SSAO on sky
 	{
-		gl_FragColor = vec4(1.0);
-		return;
+		float tt = clamp(depth, minDepth, 1.0);
+		
+		vec2 noise = rand(vUv);
+		float w = (1.0 / size.x)  / tt + (noise.x * (1.0 - noise.x));
+		float h = (1.0 / size.y) / tt + (noise.y * (1.0 - noise.y));
+		
+		// Gets the average estimated AO across sample points on a sphere using golden section spiral method
+		float dz = 1.0 / float(samples);
+		float z = 1.0 - dz / 2.0;
+		float l = 0.0;
+		for (int i = 0; i <= samples; i++)
+		{
+			float r = sqrt(1.0 - z);
+			float pw = cos(l) * r;
+			float ph = sin(l) * r;
+			ao += estimateAO(depth, pw * w, ph * h);
+			z = z - dz;
+			l = l + GOLDEN_ANGLE;
+		}
+		ao /= float(samples);
 	}
-	
-	float tt = clamp(depth, minDepth, 1.0);
-	
-	vec2 noise = rand(vUv);
-	float w = (1.0 / size.x)  / tt + (noise.x * (1.0 - noise.x));
-	float h = (1.0 / size.y) / tt + (noise.y * (1.0 - noise.y));
-	
-	// Gets the average estimated AO from evenly distributed sample points on a sphere using golden section spiral method
-	float ao = 0.0;
-	float dz = 1.0 / float(samples);
-	float z = 1.0 - dz / 2.0;
-	float l = 0.0;
-	for (int i = 0; i <= samples; i++)
-	{
-		float r = sqrt(1.0 - z);
-		float pw = cos(l) * r;
-		float ph = sin(l) * r;
-		ao += estimateAO(depth, pw * w, ph * h);
-		z = z - dz;
-		l = l + GOLDEN_ANGLE;
-	}
-	ao /= float(samples);
 	
 	ao = 1.0 - ao;
-	
 	gl_FragColor = vec4(vec3(ao), 1.0);
 }

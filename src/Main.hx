@@ -93,7 +93,7 @@ class Main {
 		gameAttachPoint.appendChild(gameDiv);
 		
 		// Setup WebGL renderer
-        renderer = new WebGLRenderer({ antialias: false });
+        renderer = new WebGLRenderer({ antialias: true });
         renderer.sortObjects = false;
 		renderer.autoClear = false;
 		renderer.setClearColor(new Color(0xff0000));
