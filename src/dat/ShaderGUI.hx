@@ -1,4 +1,4 @@
-package shaders;
+package dat;
 
 import dat.GUI;
 

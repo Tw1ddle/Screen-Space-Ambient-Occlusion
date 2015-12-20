@@ -2,10 +2,12 @@ package;
 
 import composer.ShaderPass;
 import dat.GUI;
+import dat.ShaderGUI;
+import dat.ThreeObjectGUI;
 import js.Browser;
 import msignal.Signal.Signal0;
+import shaders.BasicFXAA;
 import shaders.BasicSSAO;
-import shaders.ShaderGUI;
 import stats.Stats;
 import three.Blending;
 import three.Color;
@@ -13,7 +15,6 @@ import three.CubeGeometry;
 import three.Mesh;
 import three.Object3D;
 import three.PerspectiveCamera;
-import three.PointLight;
 import three.postprocessing.EffectComposer;
 import three.Scene;
 import three.ShaderLib;
@@ -42,11 +43,11 @@ class Main {
 	private var depthRenderTarget:WebGLRenderTarget;
 	
 	private var ssaoPass:ShaderPass;
+	private var aaPass:ShaderPass;
 	
 	private static var lastAnimationTime:Float = 0.0; // Last time from requestAnimationFrame
 	private static var dt:Float = 0.0; // Frame delta time
 	
-	private static var guiItemCount:Int = 0;
 	private var sceneGUI:GUI;
 	private var shaderGUI:GUI;
 	
@@ -99,37 +100,43 @@ class Main {
 		renderer.setClearColor(new Color(0xff0000));
 		renderer.setPixelRatio(Browser.window.devicePixelRatio);
 		
+		var width = Browser.window.innerWidth * renderer.getPixelRatio();
+		var height = Browser.window.innerHeight * renderer.getPixelRatio();
+		
 		// Setup scene
 		worldScene = new Scene();
 		
 		// Setup cameras
-        worldCamera = new PerspectiveCamera(75, Browser.window.innerWidth / Browser.window.innerHeight, 100, 700);
+        worldCamera = new PerspectiveCamera(75, width / height, 100, 700);
 		worldCamera.position.z = 500;
 		
 		// Setup passes		
 		var depthShader = ShaderLib.depthRGBA;
 		var depthUniforms = UniformsUtils.clone(depthShader.uniforms);
 		depthMaterial = new ShaderMaterial( { vertexShader: depthShader.vertexShader, fragmentShader: depthShader.fragmentShader, uniforms: depthUniforms, blending: Blending.NoBlending } );
-		depthRenderTarget = new WebGLRenderTarget(Browser.window.innerWidth, Browser.window.innerHeight, { minFilter: TextureFilter.LinearFilter, magFilter: TextureFilter.LinearFilter } );
+		depthRenderTarget = new WebGLRenderTarget(width, height, { minFilter: TextureFilter.LinearFilter, magFilter: TextureFilter.LinearFilter } );
 		
 		ssaoPass = new ShaderPass({ vertexShader: BasicSSAO.vertexShader, fragmentShader: BasicSSAO.fragmentShader, uniforms: BasicSSAO.uniforms});
-		ssaoPass.renderToScreen = true;
+		ssaoPass.renderToScreen = false;
 		
 		ssaoPass.uniforms.tDepth.value = depthRenderTarget;
-		ssaoPass.uniforms.size.value.set(Browser.window.innerWidth, Browser.window.innerHeight);
 		ssaoPass.uniforms.near.value = worldCamera.near;
 		ssaoPass.uniforms.far.value = worldCamera.far;
+		
+		aaPass = new ShaderPass({ vertexShader: BasicFXAA.vertexShader, fragmentShader: BasicFXAA.fragmentShader, uniforms: BasicFXAA.uniforms});
+		aaPass.renderToScreen = true;
 		
 		// Setup composer
 		composer = new EffectComposer(renderer);
 		composer.addPass(ssaoPass);
+		composer.addPass(aaPass);
 		
 		// Populate scene
 		// Cloud of cubes in middle of room
 		var group = new Object3D();
 		worldScene.add(group);
 		var geometry = new CubeGeometry(5, 5, 5);
-		for (i in 0...200) {			
+		for (i in 0...500) {			
 			var mesh = new Mesh(geometry, depthMaterial);
 			mesh.position.x = Math.random() * 400 - 200;
 			mesh.position.y = Math.random() * 400 - 200;
@@ -169,15 +176,16 @@ class Main {
 		});
 		
 		signal_windowResized.add(function():Void {
-			var width = Browser.window.innerWidth;
-			var height = Browser.window.innerHeight;
-			
-			ssaoPass.uniforms.size.value.set(width, height);
 			var pixelRatio = renderer.getPixelRatio();
-			var newWidth  = Math.floor(width / pixelRatio);
-			var newHeight = Math.floor(height / pixelRatio);
-			depthRenderTarget.setSize(newWidth, newHeight);
-			composer.setSize(newWidth, newHeight);
+			var width = Browser.window.innerWidth * pixelRatio;
+			var height = Browser.window.innerHeight * pixelRatio;
+			
+			ssaoPass.uniforms.resolution.value.set(width, height);
+			depthRenderTarget.setSize(width, height);
+			
+			aaPass.uniforms.resolution.value.set(width, height);
+			
+			composer.setSize(width, height);
 		});
 		
 		// Initial renderer setup
@@ -212,63 +220,13 @@ class Main {
 	private inline function setupGUI():Void {
 		Sure.sure(sceneGUI == null);
 		sceneGUI = new GUI( { autoPlace:true } );
-		addGUIItem(sceneGUI, worldCamera, "World Camera");
-		addGUIItem(sceneGUI, worldScene, "Scene");
+		ThreeObjectGUI.addItem(sceneGUI, worldCamera, "World Camera");
+		ThreeObjectGUI.addItem(sceneGUI, worldScene, "Scene");
 		
 		Sure.sure(shaderGUI == null);
 		shaderGUI = new GUI( { autoPlace:true } );
-		ShaderGUI.generate(shaderGUI, "Basic SSAO", ssaoPass.uniforms, [ "size" ]);
-	}
-	
-	private function addGUIItem(gui:GUI, object:Dynamic, ?tag:String):GUI {
-		if (gui == null || object == null) {
-			return null;
-		}
-		
-		var folder:GUI = null;
-		
-		if (tag != null) {
-			folder = gui.addFolder(tag + " (" + guiItemCount++ + ")");
-		} else {
-			var name:String = Std.string(Reflect.field(object, "name"));
-			
-			if (name == null || name.length == 0) {
-				folder = gui.addFolder("Item (" + guiItemCount++ + ")");
-			} else {
-				folder = gui.addFolder(Reflect.getProperty(object, "name") + " (" + guiItemCount++ + ")");
-			}
-		}
-		
-		if (Std.is(object, Scene)) {
-			var scene:Scene = cast object;
-			for (object in scene.children) {
-				addGUIItem(gui, object);
-			}
-		}
-		
-		if (Std.is(object, Object3D)) {
-			var object3d:Object3D = cast object;
-			
-			folder.add(object3d.position, 'x', -5000.0, 5000.0, 2).listen();
-			folder.add(object3d.position, 'y', -5000.0, 5000.0, 2).listen();
-			folder.add(object3d.position, 'z', -20000.0, 20000.0, 2).listen();
-
-			folder.add(object3d.rotation, 'x', -Math.PI * 2, Math.PI * 2, 0.01).listen();
-			folder.add(object3d.rotation, 'y', -Math.PI * 2, Math.PI * 2, 0.01).listen();
-			folder.add(object3d.rotation, 'z', -Math.PI * 2, Math.PI * 2, 0.01).listen();
-
-			folder.add(object3d.scale, 'x', 0.0, 10.0, 0.01).listen();
-			folder.add(object3d.scale, 'y', 0.0, 10.0, 0.01).listen();
-			folder.add(object3d.scale, 'z', 0.0, 10.0, 0.01).listen();
-		}
-		
-		if (Std.is(object, PointLight)) {
-			var light:PointLight = cast object;
-			
-			folder.add(light, 'intensity', 0, 3, 0.01).listen();
-		}
-		
-		return folder;
+		ShaderGUI.generate(shaderGUI, "Basic SSAO", ssaoPass.uniforms, [ "resolution" ]);
+		ShaderGUI.generate(shaderGUI, "Basic FXAA", aaPass.uniforms);
 	}
 	
 	#if debug

@@ -6,7 +6,7 @@ import util.FileReader;
 class BasicSSAO {	
 	public static var uniforms = {
 		"tDepth": { type: "t", value: null },
-		"size": { type: "v2", value: new Vector2(512, 512) },
+		"resolution": { type: "v2", value: new Vector2(512, 512) },
 		"near": { type: "f", value: 1 },
 		"far": { type: "f", value: 100 },
 		"minDepth": { type: "f", value: 0.3 },

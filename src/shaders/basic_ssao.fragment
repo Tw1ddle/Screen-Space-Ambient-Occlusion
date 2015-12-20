@@ -11,7 +11,7 @@ const int samples = 16; // AO estimator samples
 varying vec2 vUv; // UV coordinate of the pixel being processed in [0-1, 0-1]
 
 uniform sampler2D tDepth; // Depth buffer packed into texture in previous pass
-uniform vec2 size; // Render target width and height
+uniform vec2 resolution; // Render target width and height
 uniform float near; // Z-near
 uniform float far; // Z-far
 uniform float minDepth; // Depth clamp, reduces haloing at screen edges
@@ -96,8 +96,8 @@ void main()
 		float tt = clamp(depth, minDepth, 1.0);
 		
 		vec2 noise = rand(vUv);
-		float w = (1.0 / size.x)  / tt + (noise.x * (1.0 - noise.x));
-		float h = (1.0 / size.y) / tt + (noise.y * (1.0 - noise.y));
+		float w = (1.0 / resolution.x)  / tt + (noise.x * (1.0 - noise.x));
+		float h = (1.0 / resolution.y) / tt + (noise.y * (1.0 - noise.y));
 		
 		// Gets the average estimated AO across sample points on a sphere using golden section spiral method
 		float dz = 1.0 / float(samples);
