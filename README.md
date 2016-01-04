@@ -1,6 +1,6 @@
 # SSAO
 
-Screen space ambient occlusion demo for three.js. Try it out now [in your browser](TODO).
+Screen space ambient occlusion demo for three.js. Try it out now [in your browser](http://tw1ddle.github.io/Screen-Space-Ambient-Occlusion/).
 
 ## Screenshots ##
 
