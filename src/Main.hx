@@ -26,7 +26,7 @@ import three.WebGLRenderTarget;
 import webgl.Detector;
 
 class Main {
-	public static inline var REPO_URL:String = "https://github.com/Tw1ddle/Box";
+	public static inline var REPO_URL:String = "https://github.com/Tw1ddle/Screen-Space-Ambient-Occlusion";
 	public static inline var WEBSITE_URL:String = "http://samcodes.co.uk/";
 	public static inline var TWITTER_URL:String = "https://twitter.com/Sam_Twidale";
 	public static inline var HAXE_URL:String = "http://haxe.org/";
@@ -116,6 +116,7 @@ class Main {
 		depthMaterial = new ShaderMaterial( { vertexShader: depthShader.vertexShader, fragmentShader: depthShader.fragmentShader, uniforms: depthUniforms, blending: Blending.NoBlending } );
 		depthRenderTarget = new WebGLRenderTarget(width, height, { minFilter: TextureFilter.LinearFilter, magFilter: TextureFilter.LinearFilter } );
 		
+		// SSAO
 		ssaoPass = new ShaderPass({ vertexShader: BasicSSAO.vertexShader, fragmentShader: BasicSSAO.fragmentShader, uniforms: BasicSSAO.uniforms});
 		ssaoPass.renderToScreen = false;
 		
@@ -123,8 +124,11 @@ class Main {
 		ssaoPass.uniforms.near.value = worldCamera.near;
 		ssaoPass.uniforms.far.value = worldCamera.far;
 		
+		// FXAA
 		aaPass = new ShaderPass({ vertexShader: BasicFXAA.vertexShader, fragmentShader: BasicFXAA.fragmentShader, uniforms: BasicFXAA.uniforms});
 		aaPass.renderToScreen = true;
+		
+		aaPass.uniforms.resolution.value.set(width, height);
 		
 		// Setup composer
 		composer = new EffectComposer(renderer);
@@ -132,7 +136,7 @@ class Main {
 		composer.addPass(aaPass);
 		
 		// Populate scene
-		// Cloud of cubes in middle of room
+		// Cloud of cubes
 		var group = new Object3D();
 		worldScene.add(group);
 		var geometry = new CubeGeometry(5, 5, 5);
