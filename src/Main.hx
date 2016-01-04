@@ -100,8 +100,9 @@ class Main {
 		renderer.setClearColor(new Color(0xff0000));
 		renderer.setPixelRatio(Browser.window.devicePixelRatio);
 		
-		var width = Browser.window.innerWidth * renderer.getPixelRatio();
-		var height = Browser.window.innerHeight * renderer.getPixelRatio();
+		var pixelRatio = renderer.getPixelRatio();
+		var width = Browser.window.innerWidth * pixelRatio;
+		var height = Browser.window.innerHeight * pixelRatio;
 		
 		// Setup scene
 		worldScene = new Scene();
@@ -116,7 +117,7 @@ class Main {
 		depthMaterial = new ShaderMaterial( { vertexShader: depthShader.vertexShader, fragmentShader: depthShader.fragmentShader, uniforms: depthUniforms, blending: Blending.NoBlending } );
 		depthRenderTarget = new WebGLRenderTarget(width, height, { minFilter: TextureFilter.LinearFilter, magFilter: TextureFilter.LinearFilter } );
 		
-		// SSAO
+		// SSAO pass
 		ssaoPass = new ShaderPass({ vertexShader: BasicSSAO.vertexShader, fragmentShader: BasicSSAO.fragmentShader, uniforms: BasicSSAO.uniforms});
 		ssaoPass.renderToScreen = false;
 		
@@ -124,7 +125,7 @@ class Main {
 		ssaoPass.uniforms.near.value = worldCamera.near;
 		ssaoPass.uniforms.far.value = worldCamera.far;
 		
-		// FXAA
+		// FXAA pass
 		aaPass = new ShaderPass({ vertexShader: BasicFXAA.vertexShader, fragmentShader: BasicFXAA.fragmentShader, uniforms: BasicFXAA.uniforms});
 		aaPass.renderToScreen = true;
 		
@@ -184,15 +185,14 @@ class Main {
 			var width = Browser.window.innerWidth * pixelRatio;
 			var height = Browser.window.innerHeight * pixelRatio;
 			
+			// Update buffer and renderer sizes
 			ssaoPass.uniforms.resolution.value.set(width, height);
 			depthRenderTarget.setSize(width, height);
-			
 			aaPass.uniforms.resolution.value.set(width, height);
-			
 			composer.setSize(width, height);
 		});
 		
-		// Initial renderer setup
+		// Initial renderer setup + initial resize
 		signal_windowResized.dispatch();
 		
 		// Present game and start animation loop
