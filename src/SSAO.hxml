@@ -2,5 +2,4 @@
 
 -lib actuate
 -lib msignal
--lib promhx
 -lib sure
