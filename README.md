@@ -1,7 +1,6 @@
-# Screen Space Ambient Occlusion
-WORK IN PROGRESS
+# SSAO
 
-Configurable screen space ambient occlusion algorithm for three.js/WebGL. Try it out now [in your browser](TODO).
+Screen space ambient occlusion demo for three.js. Try it out now [in your browser](TODO).
 
 ## Screenshots ##
 
@@ -10,7 +9,7 @@ Configurable screen space ambient occlusion algorithm for three.js/WebGL. Try it
 ![Screenshot](screenshots/screenshot2.png?raw=true "Screen Space Ambient Occlusion Screenshot 2")
 
 ## Notes
-* Future algorithms will include Scalable Ambient Obscurance techniques by [McGuire et al](http://graphics.cs.williams.edu/papers/SAOHPG12/).
 * The current shader is based on the implementations by [ArKano22](http://www.gamedev.net/topic/550699-ssao-no-halo-artifacts/) and [Martins Upitis](http://devlog-martinsh.blogspot.tw/).
+* In the future I will look into other solutions, such as techniques by [McGuire et al](http://graphics.cs.williams.edu/papers/SAOHPG12/).
 * Uses the three.js, stats.js and dat.gui JavaScript libraries.
 * Depends on the msignal and Sure haxelibs.
