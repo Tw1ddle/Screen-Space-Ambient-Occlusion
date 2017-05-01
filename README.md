@@ -1,4 +1,6 @@
-# Screen Space Ambient Occlusion 
+# Screen Space Ambient Occlusion
+
+[![Build Status](https://img.shields.io/travis/Tw1ddle/Screen-Space-Ambient-Occlusion.svg?style=flat-square)](https://travis-ci.org/Tw1ddle/Screen-Space-Ambient-Occlusion)
 
 WebGL SSAO demo for three.js. Try it out now [in your browser](http://tw1ddle.github.io/Screen-Space-Ambient-Occlusion/).
 
